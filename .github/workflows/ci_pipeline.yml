@@ -1,4 +1,4 @@
-name: CI Pipeline y Build Docker
+name: CI/CD Pipeline con Seguridad"
 
 on:
   push:
