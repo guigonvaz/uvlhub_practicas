@@ -60,7 +60,7 @@ jobs:
       - name: Lint Dockerfile with Hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: /docker/images/Dockerfile
+          dockerfile: docker/images/Dockerfile
 
       # Step 3: Remove local editable mode for rosemary dependency
       - name: Delete rosemary editable mode
@@ -107,7 +107,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: /docker/images/Dockerfile
+          file: docker/images/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_REPO }}:${{ steps.image_tag.outputs.tag }}, ${{ secrets.DOCKER_HUB_REPO }}:latest
           cache-from: type=gha
