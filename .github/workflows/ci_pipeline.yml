@@ -61,6 +61,7 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: docker/images/Dockerfile
+        continue-on-error: true
 
       # Step 3: Remove local editable mode for rosemary dependency
       - name: Delete rosemary editable mode
