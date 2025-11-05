@@ -4,6 +4,8 @@ FROM python:3.12-slim
 # Configuraciones de entorno estándar de Python
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+# 🟢 CORRECCIÓN CLAVE: Indica a Flask dónde está el paquete de la aplicación (la carpeta 'app')
+ENV FLASK_APP=app
 
 # Crea el directorio de trabajo dentro del contenedor
 WORKDIR /app
@@ -20,11 +22,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 3. Exponer el puerto
-# Reemplaza 8000 si tu aplicación usa otro puerto (ej. 5000 para Flask)
+# Render utilizará esta variable de entorno $PORT, que suele ser 10000.
+# Sin embargo, mantenemos 8000 para consistencia, Render lo mapeará automáticamente.
 EXPOSE 8000
 
-# 4. Comando de inicio (Ajusta esto al comando que realmente inicia UVLHub)
-# Ejemplo común para una app web Python con Gunicorn:
-# CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:8000"]
-# Si usa Flask directamente (solo para desarrollo/pruebas):
-CMD ["python", "app.py"]
+# 4. Comando de inicio (Usando el servidor de desarrollo de Flask CLI)
+# 🟢 CORRECCIÓN: Usamos el comando 'flask run' que respeta la variable FLASK_APP y escucha en 0.0.0.0
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8000"]
