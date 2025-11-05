@@ -29,10 +29,6 @@ COPY requirements.txt .
 RUN find . -type d -name "__pycache__" -exec rm -r {} + && \
     find . -type f -name "*.pyc" -exec rm -f {} +
 
-# Copy entrypoint and set execution permissions
-COPY docker/entrypoints/render_entrypoint.sh /app/render_entrypoint.sh
-RUN chmod +x /app/render_entrypoint.sh
-
 # Copy the wait-for-db.sh script and set execution permissions
 COPY scripts/wait-for-db.sh /app/scripts/wait-for-db.sh
 RUN chmod +x /app/scripts/wait-for-db.sh
