@@ -4,7 +4,7 @@ FROM python:3.12-slim
 # en una sola instrucción RUN para reducir el tamaño de la imagen y limpiar caché.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends mariadb-client \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* # hadolint ignore=DL3008
 
 WORKDIR /app
 COPY . .
