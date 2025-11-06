@@ -76,7 +76,7 @@ jobs:
 
       # MODIFICADO: Análisis de Seguridad de Dependencias (safety)
       - name: Run Safety Check (Non-Blocking Report Only)
-        run: safety check -r requirements.txt --full-report || true
+        run: safety scan -r requirements.txt --full-report || true
         
       # Step 5: Run the pytest test suite and generate coverage report
       - name: Run Tests and Generate Coverage Report
