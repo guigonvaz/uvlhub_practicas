@@ -12,7 +12,6 @@ jobs:
   move_card_to_inprogress:
     runs-on: ubuntu-latest
     
-    # 1. Configuración del Token para la CLI (GH_TOKEN)
     env:
       GH_TOKEN: ${{ secrets.PROJECT_PAT }} 
       
@@ -63,11 +62,9 @@ jobs:
           echo "Añadiendo Issue #$ISSUE_NUMBER al proyecto $PROJECT_NUMBER usando URL: $ISSUE_URL"
           gh project item-add $PROJECT_NUMBER --url "$ISSUE_URL" --owner "$OWNER" || true 
           
-          # 2. Obtener el ID del Item del proyecto (¡MÉTODO FINAL Y FUNCIONAL!)
+          # 2. Obtener el ID del Item del proyecto
           echo "Buscando Item ID para la Issue #$ISSUE_NUMBER..."
           
-          # Ejecutamos la consulta GraphQL simple y usamos '| jq' para filtrar.
-          # La variable de la shell es pasada a jq usando --arg issue_num "$ISSUE_NUMBER".
           ITEM_ID=$(gh api graphql \
             --field query='
               query {
@@ -101,13 +98,14 @@ jobs:
             exit 1
           fi
 
-          # 4. Actualizar el Campo 'Status' (Usa PROJECT_NUMBER)
+          # 4. Actualizar el Campo 'Status' (¡FLAG CORREGIDA!)
           echo "Item ID encontrado: $ITEM_ID"
           echo "Actualizando Item $ITEM_ID en el Project $PROJECT_NUMBER..."
           
+          # 💡 CORRECCIÓN CRÍTICA: Reemplazamos --field-value-id por --single-select-option-id
           gh project item-edit $PROJECT_NUMBER $ITEM_ID \
              --field-id $STATUS_FIELD_ID \
-             --field-value-id $IN_PROGRESS_OPTION_ID \
+             --single-select-option-id $IN_PROGRESS_OPTION_ID \
              --owner "$OWNER"
           
           echo "Movimiento completado para Issue #$ISSUE_NUMBER a 'In Progress'."
