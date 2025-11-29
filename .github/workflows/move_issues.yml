@@ -11,6 +11,11 @@ on:
 jobs:
   move_card_to_inprogress:
     runs-on: ubuntu-latest
+
+    # 👈 ¡NUEVO!: Autenticación de la CLI para la extensión
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_PAT }} # Usamos el PAT con 'write:project' para todos los comandos 'gh'
+
     steps:
       - name: Checkout del Código
         uses: actions/checkout@v4
