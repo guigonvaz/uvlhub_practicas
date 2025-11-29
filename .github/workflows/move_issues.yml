@@ -28,9 +28,16 @@ jobs:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           # --- [IDs OBTENIDOS DE GRAPHQL Y LA URL] ---
+          # ID Global (PVT_...): Se mantiene para las consultas GraphQL
           echo "PROJECT_ID=PVT_kwHOBtICTM4BJYej" >> $GITHUB_ENV
+          
+          # Número Local (1): Usado para item-add, item-list, item-edit
           echo "PROJECT_NUMBER=1" >> $GITHUB_ENV
+          
+          # ID del Campo 'Status'
           echo "STATUS_FIELD_ID=PVTSSF_lAHOBtICTM4BJYejzg5kBZI" >> $GITHUB_ENV
+          
+          # ID de la Opción 'In Progress'
           echo "IN_PROGRESS_OPTION_ID=47fc9ee4" >> $GITHUB_ENV
           # --------------------------------------------------
           
@@ -60,37 +67,39 @@ jobs:
           # Construir URL de la Issue
           ISSUE_URL="https://github.com/$OWNER/$REPO_NAME/issues/$ISSUE_NUMBER"
           
-          # 1. Añadir la Issue al Proyecto (Usa PROJECT_NUMBER como argumento posicional)
+          # 1. Añadir la Issue al Proyecto (Usa PROJECT_NUMBER)
           echo "Añadiendo Issue #$ISSUE_NUMBER al proyecto $PROJECT_NUMBER usando URL: $ISSUE_URL"
-          # Usamos || true para que el workflow no falle si la Issue ya existe en el proyecto
+          # El comando || true evita fallos si la Issue ya estaba agregada
           gh project item-add $PROJECT_NUMBER --url "$ISSUE_URL" --owner "$OWNER" || true 
           
           # 2. Obtener el ID del Item del proyecto (¡MÉTODO CORREGIDO Y ROBUSTO!)
           echo "Buscando Item ID para la Issue #$ISSUE_NUMBER..."
           
-          # Usamos GraphQL para buscar el item en el proyecto basado en el número de Issue.
-          ITEM_ID=$(gh api graphql --jq '.node.items.nodes[0].id' -f query="
-            query {
-              node(id: \"$PROJECT_ID\") {
-                ... on ProjectV2 {
-                  items(first: 100, types: ISSUE) {
-                    nodes {
-                      id
-                      content {
-                        ... on Issue {
-                          number
+          # Usamos la consulta GraphQL corregida y jq para extraer el Item ID de la Issue
+          ITEM_ID=$(gh api graphql --jq '.node.items.nodes[] | select(.content.__typename == "Issue") | select(.content.number == $issue_num) | .id' \
+            -f query='
+              query($id: ID!, $issue_num: Int!) {
+                node(id: $id) {
+                  ... on ProjectV2 {
+                    items(first: 100) { # <--- 'types' ELIMINADO
+                      nodes {
+                        id
+                        content {
+                          __typename
+                          ... on Issue {
+                            number
+                          }
                         }
                       }
                     }
                   }
                 }
               }
-            }
-          " | jq -r --arg num "$ISSUE_NUMBER" '.[] | select(.content.number == ($num | tonumber)) | .id')
+            ' -f id="$PROJECT_ID" -f issue_num="$ISSUE_NUMBER")
 
           # 3. Validar el ITEM_ID y continuar
           if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" == "null" ]; then
-            echo "Error: No se pudo encontrar el Item ID. La Issue #$ISSUE_NUMBER no está vinculada al proyecto."
+            echo "Error: No se pudo encontrar el Item ID. Asegúrate de que la Issue #$ISSUE_NUMBER esté en el proyecto."
             exit 1
           fi
 
@@ -103,4 +112,4 @@ jobs:
              --field-value-id $IN_PROGRESS_OPTION_ID \
              --owner "$OWNER"
           
-          echo "Movimiento completado para Issue #$ISSUE_NUMBER a 'In Progress'." 
+          echo "Movimiento completado para Issue #$ISSUE_NUMBER a 'In Progress'."
