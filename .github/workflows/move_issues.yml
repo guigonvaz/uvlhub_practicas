@@ -1,6 +1,7 @@
 name: Mover a 'In progress' con Commit (GH CLI)
 
 on:
+  # Se activa en cualquier 'push' a ramas que NO sean main o trunk
   push:
     branches-ignore:
       - main
@@ -12,7 +13,7 @@ jobs:
   move_card_to_inprogress:
     runs-on: ubuntu-latest
     
-    # 1. Configuración del token (usa tu secreto PROJECT_PAT)
+    # 1. Configuración del Token para la CLI (GH_TOKEN)
     env:
       GH_TOKEN: ${{ secrets.PROJECT_PAT }} 
       
@@ -20,19 +21,27 @@ jobs:
       - name: Checkout del Código
         uses: actions/checkout@v4
       
-      # 2. Extraer el Número de la Issue y configurar IDs
+      # 2. Configurar IDs y Extraer la Issue del Commit
       - name: Configurar Datos del Proyecto e Issue
         id: config_data
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          # --- [IDs OBLIGATORIOS OBTENIDOS POR GRAPHQL] ---
+          # --- [IDs OBLIGATORIOS OBTENIDOS DE GRAPHQL Y LA URL] ---
+          # ID Global (PVT_...): Usado para item-list y item-edit
           echo "PROJECT_ID=PVT_kwHOBtICTM4BJYej" >> $GITHUB_ENV
+          
+          # Número Local (1): Usado para item-add
+          echo "PROJECT_NUMBER=1" >> $GITHUB_ENV
+          
+          # ID del Campo 'Status'
           echo "STATUS_FIELD_ID=PVTSSF_lAHOBtICTM4BJYejzg5kBZI" >> $GITHUB_ENV
+          
+          # ID de la Opción 'In Progress'
           echo "IN_PROGRESS_OPTION_ID=47fc9ee4" >> $GITHUB_ENV
           # --------------------------------------------------
           
-          # Extraer el patrón 'Refs #N'
+          # Extraer el patrón 'Refs #N' del mensaje de commit
           ISSUE_NUMBER=$(echo "$COMMIT_MSG" | grep -o -E 'Refs #[0-9]+' | grep -o -E '[0-9]+' | head -1)
           
           if [ -z "$ISSUE_NUMBER" ]; then
@@ -47,6 +56,7 @@ jobs:
       - name: Mover Issue a In Progress (CLI)
         if: steps.config_data.outputs.issue_number != ''
         env:
+          PROJECT_NUMBER: ${{ env.PROJECT_NUMBER }}
           PROJECT_ID: ${{ env.PROJECT_ID }}
           ISSUE_NUMBER: ${{ steps.config_data.outputs.issue_number }}
           STATUS_FIELD_ID: ${{ env.STATUS_FIELD_ID }}
@@ -57,20 +67,20 @@ jobs:
           # Construir URL de la Issue
           ISSUE_URL="https://github.com/$OWNER/$REPO_NAME/issues/$ISSUE_NUMBER"
           
-          # 1. Añadir la Issue al Proyecto si aún no está (Sintaxis corregida: usa --id y --url)
-          echo "Añadiendo Issue #$ISSUE_NUMBER al proyecto V2 usando URL: $ISSUE_URL"
-          gh project item-add --id $PROJECT_ID --url "$ISSUE_URL" --owner "$OWNER"
+          # 1. Añadir la Issue al Proyecto (Usa PROJECT_NUMBER como argumento posicional)
+          echo "Añadiendo Issue #$ISSUE_NUMBER al proyecto $PROJECT_NUMBER usando URL: $ISSUE_URL"
+          gh project item-add $PROJECT_NUMBER --url "$ISSUE_URL" --owner "$OWNER"
           
-          # 2. Obtener el ID del Item del proyecto para la Issue
-          # Si la Issue ya estaba en el proyecto, el paso 1 puede fallar pero el flujo continúa aquí.
+          # 2. Obtener el ID del Item del proyecto (Usa PROJECT_ID global)
+          # Esto nos da el ID necesario para editar la tarjeta.
           ITEM_ID=$(gh project item-list --id $PROJECT_ID --owner "$OWNER" | grep "#$ISSUE_NUMBER" | awk '{print $1}' | head -1)
           
           if [ -z "$ITEM_ID" ]; then
-            echo "Error: No se pudo encontrar el Item ID. ¿Está la Issue #$ISSUE_NUMBER correctamente vinculada al proyecto $PROJECT_ID?"
+            echo "Error: No se pudo encontrar el Item ID. Asegúrate de que la Issue #$ISSUE_NUMBER esté en el proyecto."
             exit 1
           fi
 
-          # 3. Actualizar el Campo 'Status' al valor 'In progress'
+          # 3. Actualizar el Campo 'Status' (Usa PROJECT_ID global, Item ID y Field IDs)
           echo "Actualizando Item $ITEM_ID en el Project $PROJECT_ID..."
           
           gh project item-edit --id $PROJECT_ID $ITEM_ID \
