@@ -20,13 +20,6 @@ jobs:
       - name: Checkout del Código
         uses: actions/checkout@v4
       
-      # 1. Instalar la CLI de GitHub (gh) y la extensión 'project'
-      - name: Instalar GitHub CLI y Extensión 'project' 👈 PASO AÑADIDO
-        run: |
-          # La CLI 'gh' ya está preinstalada en las VM de GitHub Actions, 
-          # pero la extensión 'project' debe instalarse.
-          gh extension install github/gh-project
-        
       # 2. Extraer el Número de la Issue y configurar IDs
       - name: Configurar Datos del Proyecto e Issue
         id: config_data
