@@ -98,14 +98,13 @@ jobs:
             exit 1
           fi
 
-          # 4. Actualizar el Campo 'Status' (¡FLAG CORREGIDA!)
+          # 4. Actualizar el Campo 'Status' (¡ÚLTIMA CORRECCIÓN: --owner ELIMINADO!)
           echo "Item ID encontrado: $ITEM_ID"
           echo "Actualizando Item $ITEM_ID en el Project $PROJECT_NUMBER..."
           
-          # 💡 CORRECCIÓN CRÍTICA: Reemplazamos --field-value-id por --single-select-option-id
           gh project item-edit $PROJECT_NUMBER $ITEM_ID \
              --field-id $STATUS_FIELD_ID \
-             --single-select-option-id $IN_PROGRESS_OPTION_ID \
-             --owner "$OWNER"
+             --single-select-option-id $IN_PROGRESS_OPTION_ID
+             # ❌ --owner "$OWNER" ELIMINADO
           
           echo "Movimiento completado para Issue #$ISSUE_NUMBER a 'In Progress'."
