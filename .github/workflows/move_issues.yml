@@ -26,7 +26,7 @@ jobs:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           # --- [IDs OBTENIDOS DE GRAPHQL Y LA URL] ---
-          # ¡CRÍTICO! Usar >> $GITHUB_ENV para persistencia entre pasos.
+          # CRÍTICO: Usamos >> $GITHUB_ENV para que el siguiente paso las lea como variables de entorno (PROJECT_ID, PROJECT_NUMBER, etc.)
           echo "PROJECT_ID=PVT_kwHOBtICTM4BJYej" >> $GITHUB_ENV
           echo "PROJECT_NUMBER=1" >> $GITHUB_ENV
           echo "STATUS_FIELD_ID=PVTSSF_lAHOBtICTM4BJYejzg5kBZI" >> $GITHUB_ENV
@@ -52,10 +52,10 @@ jobs:
           TARGET_STATUS_ID="" # Inicializa
           
           if echo "$COMMIT_MSG" | grep -q "Closes #$ISSUE_NUMBER"; then
-              TARGET_STATUS_ID="$DONE_OPTION_ID"
+              TARGET_STATUS_ID="$(cat $GITHUB_ENV | grep 'DONE_OPTION_ID=' | cut -d '=' -f 2)"
               echo "::notice::Detectado 'Closes #$ISSUE_NUMBER'. Mover a Done."
           elif echo "$COMMIT_MSG" | grep -q "Refs #$ISSUE_NUMBER"; then
-              TARGET_STATUS_ID="$IN_PROGRESS_OPTION_ID"
+              TARGET_STATUS_ID="$(cat $GITHUB_ENV | grep 'IN_PROGRESS_OPTION_ID=' | cut -d '=' -f 2)"
               echo "::notice::Detectado 'Refs #$ISSUE_NUMBER'. Mover a In Progress."
           fi
 
@@ -70,27 +70,41 @@ jobs:
       # 3. Mover la Tarjeta usando la CLI de GitHub
       - name: Mover Issue al Status Correspondiente (CLI)
         if: steps.config_data.outputs.issue_number != ''
-        env:
-          # Las variables ahora se acceden directamente desde el entorno (env.)
-          PROJECT_NUMBER: ${{ env.PROJECT_NUMBER }} 
-          PROJECT_ID: ${{ env.PROJECT_ID }}         
-          ISSUE_NUMBER: ${{ steps.config_data.outputs.issue_number }}
-          STATUS_FIELD_ID: ${{ env.STATUS_FIELD_ID }}
-          TARGET_STATUS_ID: ${{ env.TARGET_STATUS_ID }}
-          OWNER: ${{ github.repository_owner }}
-          REPO_NAME: ${{ github.event.repository.name }} 
+        # ¡IMPORTANTE! Hemos quitado la re-declaración de variables en 'env:' aquí
         run: |
+          # Las variables de PROJECT_ID, PROJECT_NUMBER, etc. ahora se leen directamente desde el entorno
+          
+          # CRÍTICO: Usamos 'export' interno para asegurar que la shell tenga acceso a todas las variables
+          # export PROJECT_ID=$(cat $GITHUB_ENV | grep 'PROJECT_ID=' | cut -d '=' -f 2)
+          # export PROJECT_NUMBER=$(cat $GITHUB_ENV | grep 'PROJECT_NUMBER=' | cut -d '=' -f 2)
+          
+          # Nota: La re-extracción de variables es un parche. Confiemos en que la carga de env es la adecuada.
+          
+          # --- Re-extracción de ISSUE_NUMBER y el resto de variables ---
+          # Necesitamos re-extraer ISSUE_NUMBER, que es una output variable, no de env
+          ISSUE_NUMBER="${{ steps.config_data.outputs.issue_number }}"
+          
+          # Las variables de ENTORNO (PROJECT_ID, TARGET_STATUS_ID, etc.) DEBEN estar disponibles.
+          # Si no lo están, la única forma es forzar la re-extracción.
+          
+          # Por la robustez, vamos a usar las variables de entorno de la forma más estricta:
+          PROJECT_ID="${{ env.PROJECT_ID }}"
+          PROJECT_NUMBER="${{ env.PROJECT_NUMBER }}"
+          STATUS_FIELD_ID="${{ env.STATUS_FIELD_ID }}"
+          TARGET_STATUS_ID="${{ env.TARGET_STATUS_ID }}"
+          OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          
           # Construir URL de la Issue
           ISSUE_URL="https://github.com/$OWNER/$REPO_NAME/issues/$ISSUE_NUMBER"
           
-          # 1. Añadir la Issue al Proyecto (Usa PROJECT_NUMBER, que ahora está disponible)
+          # 1. Añadir la Issue al Proyecto (Usa PROJECT_NUMBER)
           echo "Añadiendo/Verificando Issue #$ISSUE_NUMBER en el proyecto $PROJECT_NUMBER usando URL: $ISSUE_URL"
           gh project item-add $PROJECT_NUMBER --url "$ISSUE_URL" --owner "$OWNER" || true 
           
           # 2. Obtener el ID del Item del proyecto
           echo "Buscando Item ID para la Issue #$ISSUE_NUMBER..."
           
-          # La variable PROJECT_ID ahora está disponible para la consulta GraphQL
           ITEM_ID=$(gh api graphql \
             --field query='
               query {
@@ -128,7 +142,6 @@ jobs:
           echo "Item ID encontrado: $ITEM_ID"
           echo "Actualizando Item $ITEM_ID en el Project $PROJECT_ID con Status ID: $TARGET_STATUS_ID..."
           
-          # El TARGET_STATUS_ID ahora está disponible para este paso
           gh project item-edit \
              --project-id $PROJECT_ID \
              --id $ITEM_ID \
