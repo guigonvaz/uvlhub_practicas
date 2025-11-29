@@ -22,8 +22,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          # Busca el patrón 'Refs #N' donde N es uno o más dígitos, sensible a mayúsculas/minúsculas.
-          # ISSUE_NUMBER se queda solo con los dígitos (N).
+          # Busca el patrón 'Refs #N' donde N es uno o más dígitos
           ISSUE_NUMBER=$(echo "$COMMIT_MSG" | grep -o -E 'Refs #[0-9]+' | grep -o -E '[0-9]+' | head -1)
           
           if [ -z "$ISSUE_NUMBER" ]; then
@@ -35,18 +34,20 @@ jobs:
           echo "Issue a mover: #$ISSUE_NUMBER"
           echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
 
-      # 2. Mover la Tarjeta usando la acción de Marketplace
+      # 2. Mover la Tarjeta usando la acción de Marketplace (¡Nueva Acción!)
       - name: Mover Issue a la Columna 'In progress'
         # Sólo se ejecuta si se encontró un número de issue válido
         if: steps.get_issue_number.outputs.issue_number != ''
-        uses: fojia/action-move-issues-to-column@v1
+        uses: satyasooraj/github-project-automation@v2 
         with:
           # --- [VARIABLES DE CONFIGURACIÓN OBLIGATORIAS] ---
-          project: 'TEST_PROJECT'                      # <-- [CAMBIAR] Nombre EXACTO de tu proyecto (V2)
-          column: 'In progress'                   # <-- [CAMBIAR] Nombre EXACTO de la columna de destino
-          github_token: ${{ secrets.PROJECT_PAT }} # <-- [CAMBIAR] Nombre del secreto que almacena el PAT
+          action: 'set-field'                             # Acción: Establecer el valor de un campo
+          project-name: 'TEST_PROJECT'                         # <-- [CAMBIAR] Nombre EXACTO de tu proyecto
+          field-name: 'In progress'                            # <-- [CAMBIAR] Nombre del campo (columna)
+          field-value: 'In progress'                      # <-- [CAMBIAR] Nombre del estado/columna de destino
+          github-token: ${{ secrets.PROJECT_PAT }}        # PAT con 'write:project'
           
           # --- [VARIABLES AUTOMÁTICAS] ---
-          issue_number: ${{ steps.get_issue_number.outputs.issue_number }}
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.repository }}
+          issue-number: ${{ steps.get_issue_number.outputs.issue_number }}
+          owner-type: 'user'                      # <-- [CAMBIAR] O 'user' si es un proyecto personal
+          owner-name: ${{ github.repository_owner }}
