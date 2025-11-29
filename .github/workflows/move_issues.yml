@@ -147,5 +147,5 @@ jobs:
              --id $ITEM_ID \
              --field-id $STATUS_FIELD_ID \
              --single-select-option-id $TARGET_STATUS_ID
-          
+        
           echo "Movimiento completado para Issue #$ISSUE_NUMBER."
