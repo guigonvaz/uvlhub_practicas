@@ -11,11 +11,11 @@ on:
 jobs:
   move_card_to_inprogress:
     runs-on: ubuntu-latest
-
-    # 👈 ¡NUEVO!: Autenticación de la CLI para la extensión
+    
+    # 1. Configuración del token (usa tu secreto PROJECT_PAT)
     env:
-      GH_TOKEN: ${{ secrets.PROJECT_PAT }} # Usamos el PAT con 'write:project' para todos los comandos 'gh'
-
+      GH_TOKEN: ${{ secrets.PROJECT_PAT }} 
+      
     steps:
       - name: Checkout del Código
         uses: actions/checkout@v4
@@ -26,12 +26,11 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          # --- [IDs OBLIGATORIOS (Sustituir con los IDs obtenidos)] ---
-          # ¡Asegúrate de haber reemplazado estos valores!
+          # --- [IDs OBLIGATORIOS OBTENIDOS POR GRAPHQL] ---
           echo "PROJECT_ID=PVT_kwHOBtICTM4BJYej" >> $GITHUB_ENV
           echo "STATUS_FIELD_ID=PVTSSF_lAHOBtICTM4BJYejzg5kBZI" >> $GITHUB_ENV
           echo "IN_PROGRESS_OPTION_ID=47fc9ee4" >> $GITHUB_ENV
-          # -----------------------------------------------------------
+          # --------------------------------------------------
           
           # Extraer el patrón 'Refs #N'
           ISSUE_NUMBER=$(echo "$COMMIT_MSG" | grep -o -E 'Refs #[0-9]+' | grep -o -E '[0-9]+' | head -1)
@@ -48,34 +47,35 @@ jobs:
       - name: Mover Issue a In Progress (CLI)
         if: steps.config_data.outputs.issue_number != ''
         env:
-          GH_TOKEN: ${{ secrets.PROJECT_PAT }} # PAT con 'write:project'
           PROJECT_ID: ${{ env.PROJECT_ID }}
           ISSUE_NUMBER: ${{ steps.config_data.outputs.issue_number }}
           STATUS_FIELD_ID: ${{ env.STATUS_FIELD_ID }}
           IN_PROGRESS_OPTION_ID: ${{ env.IN_PROGRESS_OPTION_ID }}
           OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }} 
         run: |
-          # 1. Añadir la Issue al Proyecto si aún no está
+          # Construir URL de la Issue
           ISSUE_URL="https://github.com/$OWNER/$REPO_NAME/issues/$ISSUE_NUMBER"
           
-          # ¡COMANDO CORREGIDO! Usamos --url en lugar de --issue
+          # 1. Añadir la Issue al Proyecto si aún no está (Sintaxis corregida: usa --id y --url)
           echo "Añadiendo Issue #$ISSUE_NUMBER al proyecto V2 usando URL: $ISSUE_URL"
-          gh project item-add $PROJECT_ID --url "$ISSUE_URL" --owner "$OWNER"
-
+          gh project item-add --id $PROJECT_ID --url "$ISSUE_URL" --owner "$OWNER"
+          
           # 2. Obtener el ID del Item del proyecto para la Issue
-          ITEM_ID=$(gh project item-list $PROJECT_ID --owner "$OWNER" | grep "#$ISSUE_NUMBER" | awk '{print $1}' | head -1)
+          # Si la Issue ya estaba en el proyecto, el paso 1 puede fallar pero el flujo continúa aquí.
+          ITEM_ID=$(gh project item-list --id $PROJECT_ID --owner "$OWNER" | grep "#$ISSUE_NUMBER" | awk '{print $1}' | head -1)
           
           if [ -z "$ITEM_ID" ]; then
-            echo "Error: No se pudo encontrar el Item ID en el proyecto. ¿Está la Issue #$ISSUE_NUMBER ya añadida al proyecto?"
+            echo "Error: No se pudo encontrar el Item ID. ¿Está la Issue #$ISSUE_NUMBER correctamente vinculada al proyecto $PROJECT_ID?"
             exit 1
           fi
 
           # 3. Actualizar el Campo 'Status' al valor 'In progress'
           echo "Actualizando Item $ITEM_ID en el Project $PROJECT_ID..."
           
-          gh project item-edit $PROJECT_ID $ITEM_ID \
+          gh project item-edit --id $PROJECT_ID $ITEM_ID \
              --field-id $STATUS_FIELD_ID \
              --field-value-id $IN_PROGRESS_OPTION_ID \
              --owner "$OWNER"
           
-          echo "Movimiento completado para Issue #$ISSUE_NUMBER a 'In progress'."
+          echo "Movimiento completado para Issue #$ISSUE_NUMBER a 'In Progress'."
