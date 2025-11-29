@@ -28,16 +28,9 @@ jobs:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           # --- [IDs OBTENIDOS DE GRAPHQL Y LA URL] ---
-          # ID Global (PVT_...): Se mantiene para las consultas GraphQL
           echo "PROJECT_ID=PVT_kwHOBtICTM4BJYej" >> $GITHUB_ENV
-          
-          # Número Local (1): Usado para item-add, item-list, item-edit
           echo "PROJECT_NUMBER=1" >> $GITHUB_ENV
-          
-          # ID del Campo 'Status'
           echo "STATUS_FIELD_ID=PVTSSF_lAHOBtICTM4BJYejzg5kBZI" >> $GITHUB_ENV
-          
-          # ID de la Opción 'In Progress'
           echo "IN_PROGRESS_OPTION_ID=47fc9ee4" >> $GITHUB_ENV
           # --------------------------------------------------
           
@@ -56,8 +49,8 @@ jobs:
       - name: Mover Issue a In Progress (CLI)
         if: steps.config_data.outputs.issue_number != ''
         env:
-          PROJECT_NUMBER: ${{ env.PROJECT_NUMBER }}
-          PROJECT_ID: ${{ env.PROJECT_ID }}
+          PROJECT_NUMBER: ${{ env.PROJECT_NUMBER }} 
+          PROJECT_ID: ${{ env.PROJECT_ID }}         
           ISSUE_NUMBER: ${{ steps.config_data.outputs.issue_number }}
           STATUS_FIELD_ID: ${{ env.STATUS_FIELD_ID }}
           IN_PROGRESS_OPTION_ID: ${{ env.IN_PROGRESS_OPTION_ID }}
@@ -69,19 +62,18 @@ jobs:
           
           # 1. Añadir la Issue al Proyecto (Usa PROJECT_NUMBER)
           echo "Añadiendo Issue #$ISSUE_NUMBER al proyecto $PROJECT_NUMBER usando URL: $ISSUE_URL"
-          # El comando || true evita fallos si la Issue ya estaba agregada
           gh project item-add $PROJECT_NUMBER --url "$ISSUE_URL" --owner "$OWNER" || true 
           
-          # 2. Obtener el ID del Item del proyecto (¡MÉTODO CORREGIDO Y ROBUSTO!)
+          # 2. Obtener el ID del Item del proyecto (MÉTODO ROBUSTO, ¡CORREGIDO!)
           echo "Buscando Item ID para la Issue #$ISSUE_NUMBER..."
           
-          # Usamos la consulta GraphQL corregida y jq para extraer el Item ID de la Issue
+          # Consulta GraphQL corregida: inyecta PROJECT_ID directamente y pasa ISSUE_NUMBER a jq.
           ITEM_ID=$(gh api graphql --jq '.node.items.nodes[] | select(.content.__typename == "Issue") | select(.content.number == $issue_num) | .id' \
             -f query='
-              query($id: ID!, $issue_num: Int!) {
-                node(id: $id) {
+              query {
+                node(id: "'"$PROJECT_ID"'") {
                   ... on ProjectV2 {
-                    items(first: 100) { # <--- 'types' ELIMINADO
+                    items(first: 100) {
                       nodes {
                         id
                         content {
@@ -95,7 +87,7 @@ jobs:
                   }
                 }
               }
-            ' -f id="$PROJECT_ID" -f issue_num="$ISSUE_NUMBER")
+            ' -f issue_num="$ISSUE_NUMBER") # <-- Pasamos ISSUE_NUMBER como flag sin declarar la variable en la query
 
           # 3. Validar el ITEM_ID y continuar
           if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" == "null" ]; then
