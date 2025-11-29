@@ -103,4 +103,4 @@ jobs:
              --field-value-id $IN_PROGRESS_OPTION_ID \
              --owner "$OWNER"
           
-          echo "Movimiento completado para Issue #$ISSUE_NUMBER a 'In Progress'."
+          echo "Movimiento completado para Issue #$ISSUE_NUMBER a 'In Progress'." 
