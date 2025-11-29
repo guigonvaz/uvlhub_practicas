@@ -1,7 +1,6 @@
 name: Mover a 'In progress' con Commit (GH CLI)
 
 on:
-  # Se activa en cualquier 'push' a ramas que NO sean main o trunk
   push:
     branches-ignore:
       - main
@@ -64,13 +63,12 @@ jobs:
           echo "Añadiendo Issue #$ISSUE_NUMBER al proyecto $PROJECT_NUMBER usando URL: $ISSUE_URL"
           gh project item-add $PROJECT_NUMBER --url "$ISSUE_URL" --owner "$OWNER" || true 
           
-          # 2. Obtener el ID del Item del proyecto (¡CORRECCIÓN DE LA VARIABLE JQ!)
+          # 2. Obtener el ID del Item del proyecto (¡MÉTODO FINAL Y FUNCIONAL!)
           echo "Buscando Item ID para la Issue #$ISSUE_NUMBER..."
           
-          # Usamos --arg issue_num para pasar la variable de shell $ISSUE_NUMBER a jq
-          # La expresión de jq se filtra por el número de la Issue.
+          # Ejecutamos la consulta GraphQL simple y usamos '| jq' para filtrar.
+          # La variable de la shell es pasada a jq usando --arg issue_num "$ISSUE_NUMBER".
           ITEM_ID=$(gh api graphql \
-            --jq '.node.items.nodes[] | select(.content.__typename == "Issue") | select(.content.number == $issue_num) | .id' \
             --field query='
               query {
                 node(id: "'"$PROJECT_ID"'") {
@@ -91,7 +89,11 @@ jobs:
               }
             ' \
             --field id="$PROJECT_ID" \
-            --arg issue_num "$ISSUE_NUMBER") # <-- ¡CAMBIO CRÍTICO! Uso de --arg para JQ
+            | jq -r --arg issue_num "$ISSUE_NUMBER" \
+                '.data.node.items.nodes[] | 
+                 select(.content.__typename == "Issue") | 
+                 select(.content.number == ($issue_num | tonumber)) | 
+                 .id')
 
           # 3. Validar el ITEM_ID y continuar
           if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" == "null" ]; then
