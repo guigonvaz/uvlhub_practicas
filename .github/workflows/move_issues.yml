@@ -26,13 +26,13 @@ jobs:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           # --- [IDs OBTENIDOS DE GRAPHQL Y LA URL] ---
-          echo "PROJECT_ID=PVT_kwHOBtICTM4BJYej" >> $GITHUB_ENV
-          echo "PROJECT_NUMBER=1" >> $GITHUB_ENV
-          echo "STATUS_FIELD_ID=PVTSSF_lAHOBtICTM4BJYejzg5kBZI" >> $GITHUB_ENV
+          export PROJECT_ID="PVT_kwHOBtICTM4BJYej"
+          export PROJECT_NUMBER="1"
+          export STATUS_FIELD_ID="PVTSSF_lAHOBtICTM4BJYejzg5kBZI"
           
           # IDs de las opciones de Status
-          echo "IN_PROGRESS_OPTION_ID=47fc9ee4" >> $GITHUB_ENV
-          echo "DONE_OPTION_ID=98236657" >> $GITHUB_ENV 
+          export IN_PROGRESS_OPTION_ID="47fc9ee4"
+          export DONE_OPTION_ID="98236657"
           # --------------------------------------------------
           
           # 1. Extraer el patrón 'Refs #N' o 'Closes #N' del mensaje de commit
@@ -63,7 +63,7 @@ jobs:
               exit 1
           fi
 
-          # Exportar la variable TARGET_STATUS_ID
+          # Exportar la variable TARGET_STATUS_ID al entorno de GitHub Actions
           echo "TARGET_STATUS_ID=$TARGET_STATUS_ID" >> $GITHUB_ENV
           
       # 3. Mover la Tarjeta usando la CLI de GitHub
