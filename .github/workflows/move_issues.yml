@@ -1,0 +1,52 @@
+name: Mover a 'In progress' con Commit (Refs #N)
+
+on:
+  # Se activa en cualquier 'push' a ramas que NO sean main o trunk
+  push:
+    branches-ignore:
+      - main
+      - trunk
+    paths-ignore:
+      - '**.md' # Ignora cambios en archivos de documentación
+
+jobs:
+  move_card_to_inprogress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+      
+      # 1. Extraer el Número de la Issue del patrón "Refs #N"
+      - name: Obtener Número de Issue por Patrón 'Refs #N'
+        id: get_issue_number
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          # Busca el patrón 'Refs #N' donde N es uno o más dígitos, sensible a mayúsculas/minúsculas.
+          # ISSUE_NUMBER se queda solo con los dígitos (N).
+          ISSUE_NUMBER=$(echo "$COMMIT_MSG" | grep -o -E 'Refs #[0-9]+' | grep -o -E '[0-9]+' | head -1)
+          
+          if [ -z "$ISSUE_NUMBER" ]; then
+            echo "::notice::No se encontró el patrón 'Refs #N' en el commit. Saltando acción."
+            echo "issue_number=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "Issue a mover: #$ISSUE_NUMBER"
+          echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+
+      # 2. Mover la Tarjeta usando la acción de Marketplace
+      - name: Mover Issue a la Columna 'In progress'
+        # Sólo se ejecuta si se encontró un número de issue válido
+        if: steps.get_issue_number.outputs.issue_number != ''
+        uses: fojia/action-move-issues-to-column@v1
+        with:
+          # --- [VARIABLES DE CONFIGURACIÓN OBLIGATORIAS] ---
+          project: 'TEST_PROJECT'                      # <-- [CAMBIAR] Nombre EXACTO de tu proyecto (V2)
+          column: 'In progress'                   # <-- [CAMBIAR] Nombre EXACTO de la columna de destino
+          github_token: ${{ secrets.PROJECT_PAT }} # <-- [CAMBIAR] Nombre del secreto que almacena el PAT
+          
+          # --- [VARIABLES AUTOMÁTICAS] ---
+          issue_number: ${{ steps.get_issue_number.outputs.issue_number }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.repository }}
