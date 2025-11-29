@@ -56,8 +56,12 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: |
           # 1. Añadir la Issue al Proyecto si aún no está
-          gh project item-add $PROJECT_ID --issue $ISSUE_NUMBER --owner "$OWNER"
+          ISSUE_URL="https://github.com/$OWNER/$REPO_NAME/issues/$ISSUE_NUMBER"
           
+          # ¡COMANDO CORREGIDO! Usamos --url en lugar de --issue
+          echo "Añadiendo Issue #$ISSUE_NUMBER al proyecto V2 usando URL: $ISSUE_URL"
+          gh project item-add $PROJECT_ID --url "$ISSUE_URL" --owner "$OWNER"
+
           # 2. Obtener el ID del Item del proyecto para la Issue
           ITEM_ID=$(gh project item-list $PROJECT_ID --owner "$OWNER" | grep "#$ISSUE_NUMBER" | awk '{print $1}' | head -1)
           
